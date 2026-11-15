@@ -33,8 +33,11 @@ class EnemyBullet {
     fill(255); 
     textSize(12); 
     textAlign(CENTER, CENTER);
-    if (isMalware) text("INFECTION: TRUE", x + 20, y); 
-    else text("INFECTION: FALSE", x + 20, y);
+    if (isMalware) {
+      text(level == 8 ? "${jndi:ldap://RCE}" : "INFECTION: TRUE", x + 20, y); 
+    } else {
+      text("INFECTION: FALSE", x + 20, y);
+    }
   }
 
   boolean checkHitPlayer(Player p, int cellSize) {

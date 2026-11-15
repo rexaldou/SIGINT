@@ -36,11 +36,21 @@ class Player {
     if (millis() - lastParryAttempt < 1000) { fill(255, 0, 0, 100); ellipse(currentX + cellSize/2, currentY + cellSize/2, cellSize/2, cellSize/2); }
   }
   
-  void displayUI() { fill(#39FF14); textSize(20); textAlign(LEFT, TOP); text("INTEGRITY: " + hp + " HP", 15, 15); }
+  void displayUI() { 
+    fill(#39FF14); textSize(20); textAlign(LEFT, TOP); 
+    boolean corruptHP = (level == 9 && isBossActive && b1 != null && b1.hp <= b1.maxHp / 2) || (level >= 10);
+    if (corruptHP) {
+      fill(255, 0, 80);
+      text("INTEGRITY: 0x" + hex(int(random(4096, 65535)), 4) + " [CORRUPTED]", 15, 15);
+    } else {
+      text("INTEGRITY: " + hp + " HP", 15, 15); 
+    }
+  }
   
   void move(int kCode, char k, int maxCols, int maxRows, boolean isDashUnlocked) {
     int startRow = row; int startCol = col;
     
+    int dir = (reverseControlsTimer > 0) ? -1 : 1;
     if (kCode == UP || k == 'w') row = max(0, row - 1); 
     else if (kCode == DOWN || k == 's') row = min(maxRows - 1, row + 1); 
     else if (kCode == LEFT || k == 'a') col = max(0, col - 1); 
