@@ -156,20 +156,24 @@ void drawCombat() {
       isBossActive = true; 
       shake = 20; 
       zeroDayActive = false; wormActive = false; ddosLimited = false;
-      if (level == 5) { ransomCol = int(random(cols)); ransomRow = int(random(rows));}
-      else {ransomCol = -1; ransomRow = -1;}
+      if (level == 5) { ransomCol = int(random(cols)); ransomRow = int(random(rows)); }
+      else { ransomCol = -1; ransomRow = -1; }
+      
       if (level == 9) {
         solarWindsInfected = true;
         currentHint = ">> SUPPLY CHAIN ALERT: Abnormal HP drain! Check weapon config via nano";
-      }
-      if (level >= 10) {
+      } else if (level >= 10) {
         aptTargetFrames = int(random(150 * 60, 210 * 60));
         aptSurvivedFrames = 0;
         currentHint = ">>> HARDWARE FAILURE! SURVIVE UNTIL THE FILE IS UPLOADED";
-      currentHint = ">> INTRUSION ACTIVE. ELIMINATE THE THREAT.";
-    } else {
+      } else {
+        currentHint = ">> INTRUSION ACTIVE. ELIMINATE THE THREAT.";
+      }
+    }
+  } else {
     if (frameCount % 20 < 10) fill(255, 0, 0); else fill(150, 0, 0);
     text("[ THREAT LEVEL : CRITICAL ]", width/2, 15);
+    }
     
     // 1. UPDATE BOS ATAU STATUS STUN (HASIL MITIGASI ZERO-DAY)
     if (bossStunTimer > 0) {
@@ -427,7 +431,8 @@ void drawCombat() {
 // ==========================================
 // Terminal VFS ala Linux
 // ==========================================
-void drawTerminal() { 
+void drawTerminal() {
+  
   fill(10, 10, 15, 240); rect(10, 10, width-20, height-20, 5); 
   
   if (isNanoMode) {
@@ -482,7 +487,6 @@ void keyPressed() {
     
     // EKSEKUSI TEMBAKAN
     if (key == ' ' && isBossActive) {
-      if (key == ' ' && isBossActive) {
       if (solarWindsInfected) {
         p1.hp--; shake = 15; background(255, 0, 0, 120);
         currentHint = ">> SUNBURST BACKDOOR TRIGGERED (-1 HP)! Clean 'weapon_config.py' in nano!";
