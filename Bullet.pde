@@ -11,16 +11,17 @@ class Bullet {
     this.type = type;
     
     // Nentuin arah tembakan (Kiri atau Kanan ngikutin posisi Bos)
-    float baseSpeed = type.equals("PLASMA") ? 15 : 10;
+    float baseSpeed = type.equals("PLASMA") ? 15 : rifleSpeed;
     speedX = (b.col * cellSize > this.x) ? baseSpeed : -baseSpeed;
   }
   
   void update(Boss b, boolean autoAim) {
     if (autoAim && !type.equals("PLASMA")) { 
-      float targetY = b.row * 150 + 75; // Asumsi cellSize 150
-      float targetX = b.col * 150 + 75;
-      y = lerp(y, targetY, 0.1); 
-      x = lerp(x, targetX, 0.1);
+      float targetY = b.row * cellSize + (cellSize / 2.0); // Asumsi cellSize 150
+      float targetX = b.col * cellSize + (cellSize / 2.0);
+      y = lerp(y, targetY, 0.12); 
+      x = lerp(x, targetX, 0.08);
+      this.row = int(y / cellSize);
     } else {
       x += speedX; // Nembak lurus ke kiri/kanan
     }

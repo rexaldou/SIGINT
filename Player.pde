@@ -22,7 +22,7 @@ class Player {
       if (t.life <= 0) trails.remove(i);
     }
     
-    if (millis() - parryTimer < 150) { isParrying = true; fill(255); } 
+    if (millis() - parryTimer < 90) { isParrying = true; fill(255); } 
     else { isParrying = false; fill(#39FF14); }
     
     // KEDAP KEDIP I-FRAME

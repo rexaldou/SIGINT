@@ -9,6 +9,11 @@ class Boss {
   // Variabel Skala Kesulitan
   int moveDelay = 60, shootDelay = 60;
   boolean isVisible = true; 
+  
+  // VARIABEL SERANGAN LANTAI MERAH/BIRU (FASE 1B)
+  int targetCol = -1, targetRow = -1, wipeType = 0; 
+  int lastActionTime = 0, warningDuration = 800, attackDuration = 300;
+  boolean isWarning = false, isAttacking = false, isParryable = false;
 
   Boss(int lvl) {
     level = lvl;
@@ -29,6 +34,7 @@ class Boss {
       default: maxHp = 9999; moveDelay = 15; shootDelay = 20; break; // Lvl 10 APT (Dead Man's Switch)
     }
     hp = maxHp;
+    lastActionTime = millis();
   }
 
   void update(Player p) {
@@ -52,9 +58,48 @@ class Boss {
          // Logika multi-bullet akan ditangkap di Tab Main nantinya
        }
     }
+    
+    // Logika Serangan Lantai (Tile Attack)
+    int currentTime = millis();
+    if (!isWarning && !isAttacking && currentTime - lastActionTime > 1500) { 
+      isParryable = (random(1) > 0.5); // 50% Biru (Parryable), 50% Kuning/Merah (Unparryable)
+      if (level >= 2 && random(1) > 0.5) {
+        wipeType = (random(1) > 0.5) ? 1 : 2; // 1 = Satu Baris Penuh, 2 = Satu Kolom Penuh
+        if (wipeType == 1) targetRow = p.row; else targetCol = p.col; 
+      } else { 
+        wipeType = 0; // 0 = Satu Kotak (Single Tile)
+        targetCol = p.col; targetRow = p.row; 
+      }
+      isWarning = true; 
+      lastActionTime = currentTime;
+    }
+    
+    if (isWarning && currentTime - lastActionTime > warningDuration) { 
+      isWarning = false; 
+      isAttacking = true; 
+      lastActionTime = currentTime; 
+    }
+    if (isAttacking && currentTime - lastActionTime > attackDuration) { 
+      isAttacking = false; 
+      wipeType = 0; 
+      lastActionTime = currentTime; 
+    }
   }
 
   void display(int cellSize) {
+    // RENDER WARNA LANTAI (Kuning/Merah vs Biru)
+    noStroke();
+    if (isWarning) {
+      if (isParryable) fill(0, 150, 255, 120); else fill(200, 200, 0, 120); 
+    } else if (isAttacking) {
+      if (isParryable) fill(0, 255, 255, 200); else fill(255, 0, 0, 200);
+    }
+    
+    if (isWarning || isAttacking) {
+      if (wipeType == 1) rect(0, targetRow * cellSize, width, cellSize); 
+      else if (wipeType == 2) rect(targetCol * cellSize, 0, cellSize, height); 
+      else rect(targetCol * cellSize, targetRow * cellSize, cellSize, cellSize);
+    }
     // Skenario Lvl 7: Pegasus Spyware (Zero-Click Exploit)
     // Bos ga kelihatan, cuma muncul ngedip 10 frame setiap 2 detik
     if (level == 7 && frameCount % 120 > 10) return; 
@@ -78,5 +123,13 @@ class Boss {
     // Label Bos
     fill(255); textSize(12); textAlign(CENTER, CENTER);
     text(level >= 10 ? "APT" : "LVL " + level, col * cellSize + cellSize/2, row * cellSize + cellSize/2);
+  }
+  
+  boolean checkHit(Player p) {
+    if (!isAttacking) return false;
+    if (wipeType == 1 && p.row == targetRow) return true; 
+    if (wipeType == 2 && p.col == targetCol) return true; 
+    if (wipeType == 0 && p.col == targetCol && p.row == targetRow) return true;
+    return false;
   }
 }
