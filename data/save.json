@@ -1,1 +1,11 @@
-{"system_corrupted": false}
+{
+  "playerDamage": 2,
+  "plasmaUnlocked": false,
+  "rifleSpeed": 10,
+  "current_level": 0,
+  "spreadUnlocked": false,
+  "autoAimUnlocked": false,
+  "dashUnlocked": false,
+  "log2Unlocked": false,
+  "system_corrupted": false
+}

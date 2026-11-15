@@ -4,26 +4,43 @@ ArrayList<Bullet> bullets = new ArrayList<Bullet>();
 ArrayList<EnemyBullet> enemyBullets = new ArrayList<EnemyBullet>();
 ArrayList<Particle> particles = new ArrayList<Particle>();
 
-int lastHitTime = 0; int deathTimer = 0; int gameState = 7; int level = 1; float shake = 0; 
-JSONObject saveFile;
+// GAME STATES: 0 = Booting, 1 = Grid/Combat, 2 = Terminal VFS, 3 = Kernel Panic (GameOver)
+int gameState = 0; 
+int level = 1; float shake = 0; 
 
-String inputText = ""; String currentHint = ">> FIREWALL ACTIVE.\nType 'help;' for commands.";
-boolean dashUnlocked = false, autoAimUnlocked = false, spreadUnlocked = false, plasmaUnlocked = false; 
-boolean isGodMode = false; 
-boolean hasParriedOnce = false, clueDash = false, clueSpread = false, clueAim = false, cluePlasma = false;
+// STATUS & PACING
+int bootTimer = 0; 
+int waveTimer = 0; 
+boolean isBossActive = false; // Bos ga langsung muncul, nunggu status merah
+String currentHint = ">> FIREWALL ACTIVE.\nPress [Q] to open terminal.";
+int lastHitTime = 0; int parryFlashTimer = 0; int freezeFrames = 0; 
 
-int parryFlashTimer = 0; int freezeFrames = 0; 
+// WEAPON CONFIG 
 int currentWeapon = 1; int chargeTime = 0; boolean isCharging = false;
-String terminalHeader = "Ubuntu 24.04 LTS (GNU/Linux 5.15.0-generic x86_64)\nType 'help;' for available commands.";
-String loreFullText = "LOG DATE: NOV 2026\n\nCRITICAL BREACH DETECTED IN SECTOR 7.\nUNIDENTIFIED MALWARE [ROOTKIT-CLASS] HAS INFILTRATED THE SYSTEM.\n\nGAMING ACCOUNTS COMPROMISED.\nSOCIAL MEDIA TOKENS CORRUPTED.\n\nDEPLOYING LAST LINE OF DEFENSE: FIREWALL.EXE\n\nYOUR DIRECTIVE: QUARANTINE THE THREAT.\nDO NOT FAIL.";
-float loreCurrentIndex = 0; 
+boolean dashUnlocked = true, autoAimUnlocked = false, spreadUnlocked = false, plasmaUnlocked = false; 
+
+// VFS TERMINAL (Draft Awal)
+String inputText = "";
+String terminalHeader = "root@sigint:~# ";
+String currentDir = "~";
+ArrayList<String> terminalHistory = new ArrayList<String>();
+
+// ACT 3: NANO EDITOR VARIABLES
+boolean isNanoMode = false;
+String nanoBuffer = "";
+String currentFile = "";
+int playerDamage = 2; // Default damage
+int rifleSpeed = 10;  // Default peluru
+
+// ACT 4: HACKING & DECRYPTOR VARIABLES
+String decryptorBuffer = "# SIGINT DECRYPTOR\n# Input vulnerability offset:\n\ndecryption_key = 0";
+boolean log2Unlocked = false; 
+int boss1Key = 666; // Jawaban puzzle dari Bos 1
 
 void setup() {
   size(600, 600); cellSize = width / cols; frameRate(60);
-  p1 = new Player(0, 0, cellSize); b1 = new Boss(level); 
-  File f = new File(dataPath("save.json"));
-  if (!f.exists()) { saveFile = new JSONObject(); saveFile.setBoolean("system_corrupted", false); saveJSONObject(saveFile, "data/save.json"); } 
-  else { saveFile = loadJSONObject("data/save.json"); if (saveFile.getBoolean("system_corrupted") == true) gameState = 5; }
+  p1 = new Player(0, 0, cellSize); 
+  loadGameState(); // <--- KITA PANGGIL SAVE FILE-NYA DI SINI
 }
 
 void draw() {
@@ -32,161 +49,331 @@ void draw() {
   if (shake > 0) { translate(random(-shake, shake), random(-shake, shake)); shake *= 0.9; if (shake < 0.5) shake = 0; }
   
   switch(gameState) {
-    case 7: drawLoreIntro(); break; case 0: drawMenu(); break; case 1: drawCombat(); break;
-    case 2: drawTerminal(); break; case 3: drawGameOver(); break; case 4: drawWin(); break; 
-    case 5: drawSystemLocked(); break; case 6: drawBossDeath(); break;
+    case 0: drawBootSequence(); break; 
+    case 1: drawCombat(); break;
+    case 2: drawTerminal(); break; 
+    case 3: drawGameOver(); break; 
   }
+  
   popMatrix(); 
-  if (gameState != 5) { drawCRT(); drawGlitch(); }
+  drawCRT(); 
+  drawGlitch(); 
 }
 
-void drawCRT() { stroke(0, 50); strokeWeight(2); for(int i = 0; i < height; i += 4) { line(0, i, width, i); } fill(255, random(2, 10)); noStroke(); rect(0, 0, width, height); }
-void drawGlitch() {
-  if (shake > 0) { noStroke(); for (int i = 0; i < int(random(4, 8)); i++) { float y = random(height), h = random(5, 30), xShift = random(-40, 40); fill(255, 0, 50, 150); rect(xShift, y, width, h); fill(0, 255, 255, 150); rect(-xShift, y + random(-10, 10), width, h); } }
+// ==========================================
+// ACT 1: THE IN MEDIA RES BOOT SEQUENCE
+// ==========================================
+void drawBootSequence() {
+  bootTimer++;
+  fill(#39FF14); textSize(16); textAlign(LEFT, TOP);
+  
+  String bootText = "";
+  if (bootTimer > 10) bootText += ">> BOOT SEQUENCE INITIATED...\n";
+  if (bootTimer > 60) bootText += ">> LOADING KERNEL MODULES [OK]\n";
+  if (bootTimer > 110) bootText += ">> HEURISTIC AI 'SIGINT' ONLINE.\n";
+  if (bootTimer > 180) bootText += ">> WARNING: POLYMORPHIC ANOMALY DETECTED IN SECTOR 7.\n";
+  
+  text(bootText, 40, 60);
+  
+  if (bootTimer > 280) {
+    gameState = 1; 
+    waveTimer = 0; 
+    isBossActive = false; 
+  }
 }
-void drawLoreIntro() { fill(#39FF14); textSize(18); textAlign(LEFT, TOP); if (loreCurrentIndex < loreFullText.length()) loreCurrentIndex += 0.5; String currentText = loreFullText.substring(0, min((int)loreCurrentIndex, loreFullText.length())); text(currentText, 40, 60); if (loreCurrentIndex >= loreFullText.length() && sin(millis() / 200.0) > 0) { fill(255); textAlign(CENTER, BOTTOM); text("> PRESS [ENTER] TO INITIALIZE <", width/2, height - 40); } }
-void drawMenu() { fill(#39FF14); textSize(45); textAlign(CENTER, CENTER); text("FIREWALL.EXE", width/2, height/2 - 50); textSize(16); text("V 7.0 - ARSENAL PROTOCOL", width/2, height/2 - 15); if (sin(millis() / 200.0) > 0) { fill(255); text("> PRESS [ENTER] TO EXECUTE <", width/2, height/2 + 40); } }
-void drawGameOver() { fill(255, 0, 0); textSize(40); textAlign(CENTER, CENTER); text("SYSTEM COMPROMISED\nMalware takes over.", width/2, height/2); }
-void drawWin() { fill(#39FF14); textSize(40); textAlign(CENTER, CENTER); text("MALWARE QUARANTINED\nPress ENTER to advance.", width/2, height/2); }
-void drawSystemLocked() { background(10, 10, 10); fill(255, 0, 0); textSize(40); textAlign(CENTER, CENTER); text("FATAL ERROR: SYSTEM FORMATTED", width/2, height/2 - 30); fill(255); textSize(16); text("Admin privileges revoked.", width/2, height/2 + 20); }
-void drawTerminal() { fill(50, 50, 60, 200); rect(10, 10, width-20, height-20, 10); fill(0, 255, 255); textSize(14); textAlign(LEFT, TOP); text(terminalHeader, 20, 20); fill(#39FF14); textSize(14); text("root@firewall:~# " + currentHint, 20, 70); fill(255); textSize(16); text("root@firewall:~# " + inputText + (millis() % 1000 < 500 ? "_" : ""), 20, 350); fill(255, 150); textAlign(CENTER, BOTTOM); text("Press [TAB] to return to combat", width/2, height - 30); }
 
+// ==========================================
+// ACT 1: THE DYNAMIC STATUS UI & GRID
+// ==========================================
 void drawCombat() {
   if (freezeFrames > 0) { freezeFrames--; return; }
-  if (p1.iFrameTimer > 0) p1.iFrameTimer--; // KURANGIN TIMER KEBAL
-  
+  if (p1.iFrameTimer > 0) p1.iFrameTimer--; 
   if (p1.hp <= 0) gameState = 3; 
-  if (b1.hp <= 0 && gameState == 1) { 
-    for (int i = 0; i < 150; i++) { particles.add(new Particle(b1.col * cellSize + cellSize/2, b1.row * cellSize + cellSize/2, color(255, 120, 0))); particles.add(new Particle(b1.col * cellSize + cellSize/2, b1.row * cellSize + cellSize/2, color(255, 255, 255))); }
-    shake = 40; deathTimer = millis(); gameState = 6; return;
-  }
-  
-  b1.update(p1); 
-  if (b1.wantsToShoot) { enemyBullets.add(new EnemyBullet(b1.col, b1.row, cellSize)); b1.wantsToShoot = false; }
   
   stroke(#39FF14); strokeWeight(2);
-  for (int i = 0; i < cols; i++) { for (int j = 0; j < rows; j++) { noFill(); rect(i * cellSize, j * cellSize, cellSize, cellSize); fill(50, 200, 50, 100); textSize(16); text("[" + i + "][" + j + "]", i*cellSize + cellSize/2, j*cellSize + cellSize/2 - 30); } }
-  
-  b1.display(cellSize); p1.display(cellSize); p1.displayUI(); 
-  
-  // RENDER BAR PLASMA CHARGE
-  if (isCharging) {
-    chargeTime++; fill(0, 255, 255); rect(p1.currentX + 10, p1.currentY - 10, map(min(chargeTime, 60), 0, 60, 0, cellSize - 20), 5);
-    if (chargeTime >= 60) { fill(255); rect(p1.currentX + 10, p1.currentY - 10, cellSize - 20, 5); } // Tanda penuh
+  for (int i = 0; i < cols; i++) { 
+    for (int j = 0; j < rows; j++) { 
+      noFill(); rect(i * cellSize, j * cellSize, cellSize, cellSize); 
+      fill(50, 200, 50, 60); textSize(12); textAlign(CENTER, CENTER);
+      text("0x" + hex(i*10 + j, 2), i*cellSize + cellSize/2, j*cellSize + cellSize/2); 
+    } 
   }
   
-  fill(0, 255, 255); textSize(14); textAlign(RIGHT, BOTTOM); text("WEAPON: " + currentWeapon + " | PRESS [Q] FOR TERMINAL", width - 15, height - 10);
-  fill(255); textSize(16); textAlign(CENTER, TOP); if (isGodMode) text("SECURITY: ROOT (INVINCIBLE)", width/2, 15); else text("SECURITY LEVEL: " + level, width/2, 15);
+  fill(255); textSize(18); textAlign(CENTER, TOP);
+  
+  if (!isBossActive) {
+    waveTimer++;
+    if (waveTimer < 200) {
+      fill(0, 255, 0); text("[ SYSTEM STATUS : OPTIMAL ]", width/2, 15);
+      if (waveTimer == 100) currentHint = ">> NEW DATA INTERCEPTED. PRESS [Q] TO ANALYZE.";
+    } else if (waveTimer < 400) {
+      fill(255, 255, 0); text("[ SYSTEM STATUS : ANOMALY DETECTED ]", width/2, 15);
+    } else if (waveTimer < 550) {
+      if (frameCount % 10 < 5) fill(255, 150, 0); else fill(255, 0, 0);
+      text("[ SYSTEM STATUS : BREACH IMMINENT ]", width/2, 15);
+    } else {
+      b1 = new Boss(level); 
+      isBossActive = true; 
+      shake = 20; 
+      currentHint = ">> INTRUSION ACTIVE. ELIMINATE THE THREAT.";
+    }
+  } else {
+    if (frameCount % 20 < 10) fill(255, 0, 0); else fill(150, 0, 0);
+    text("[ THREAT LEVEL : CRITICAL ]", width/2, 15);
+    
+    b1.update(p1); 
+    b1.display(cellSize);
+    
+    if (b1.wantsToShoot) { enemyBullets.add(new EnemyBullet(b1.col, b1.row, cellSize)); b1.wantsToShoot = false; }
+    
+    if (b1.hp <= 0) {
+      for (int i = 0; i < 150; i++) particles.add(new Particle(b1.col * cellSize + cellSize/2, b1.row * cellSize + cellSize/2, color(255, 120, 0)));
+      shake = 30; 
+      isBossActive = false; 
+      waveTimer = 0; 
+      level++;
+      saveGameState();
+      bullets.clear(); enemyBullets.clear();
+    }
+  }
+  
+  p1.display(cellSize); p1.displayUI(); 
   
   for (int i = bullets.size() - 1; i >= 0; i--) {
-    Bullet b = bullets.get(i); b.update(b1, autoAimUnlocked); b.display();
-    if (b.checkHit(b1, cellSize)) { b1.hp -= b.type.equals("PLASMA") ? 10 : 2; if (!b.type.equals("PLASMA")) bullets.remove(i); shake = 5; } else if (!b.active) bullets.remove(i); 
+    Bullet b = bullets.get(i); 
+    if (isBossActive) b.update(b1, autoAimUnlocked); 
+    b.display();
+    if (isBossActive && b.checkHit(b1, cellSize)) { b1.hp -= b.type.equals("PLASMA") ? 10 : playerDamage; bullets.remove(i); shake = 5; } 
+    else if (!b.active) bullets.remove(i); 
   }
   
   for (int i = enemyBullets.size() - 1; i >= 0; i--) {
     EnemyBullet eb = enemyBullets.get(i); eb.update(p1, b1, cellSize); eb.display();
-    if (eb.checkHitPlayer(p1, cellSize)) {
-      if (p1.isParrying) { 
-        eb.isMalware = false; shake = 25; parryFlashTimer = 5; freezeFrames = 3; p1.iFrameTimer = 60; // 1s KEBAL!
-        if (!hasParriedOnce) { hasParriedOnce = true; clueDash = true; currentHint = ">> DATA FRAGMENT EXTRACTED FROM PARRY.\n>> Type 'help;' to inspect."; }
-      } else if (p1.iFrameTimer == 0) {
-        if (millis() - lastHitTime > 1000) { if (!isGodMode) p1.hp--; lastHitTime = millis(); shake = 20; currentHint = ">> BREACH DETECTED!"; }
-        background(255, 0, 0, 100); enemyBullets.remove(i); 
-      }
-    } else if (eb.checkHitBoss(b1, cellSize)) { b1.hp -= 15; enemyBullets.remove(i); shake = 30; } else if (!eb.active) enemyBullets.remove(i);
   }
   
-  // HIT BOX LANTAI MERAH VS BIRU
-  if (b1.checkHit(p1)) {
-    if (b1.isParryable && p1.isParrying) {
-      b1.hp -= 20; shake = 30; parryFlashTimer = 5; freezeFrames = 3; p1.iFrameTimer = 60; b1.isAttacking = false;
-      currentHint = ">> DPI SUCCESS: TILE ATTACK REFLECTED!";
-    } else if (p1.iFrameTimer == 0 && millis() - lastHitTime > 1000) { 
-      if (!isGodMode) p1.hp -= 2; lastHitTime = millis(); background(255, 0, 0, 100); shake = 25; 
-      currentHint = ">> BREACH DETECTED: UNPARRYABLE TILE!";
-    }
-  }
+  fill(0, 255, 255); textSize(12); textAlign(CENTER, BOTTOM); 
+  text(currentHint, width/2, height - 10);
+  
   if (parryFlashTimer > 0) { filter(INVERT); parryFlashTimer--; }
 }
 
-void drawBossDeath() { stroke(#39FF14); strokeWeight(2); for (int i = 0; i < cols; i++) { for (int j = 0; j < rows; j++) { noFill(); rect(i * cellSize, j * cellSize, cellSize, cellSize); } } p1.display(cellSize); for (int i = particles.size() - 1; i >= 0; i--) { Particle p = particles.get(i); p.update(); p.display(); if (p.life <= 0) particles.remove(i); } if (millis() - deathTimer > 2000) gameState = 4; }
-void resetGame() { p1 = new Player(0, 0, cellSize); b1 = new Boss(level); bullets.clear(); enemyBullets.clear(); particles.clear(); inputText = ""; lastHitTime = millis(); }
-
-void keyPressed() {
-  if (gameState == 5) { if (keyCode == BACKSPACE) { saveFile.setBoolean("system_corrupted", false); saveJSONObject(saveFile, "data/save.json"); gameState = 0; } return; }
-  if (gameState == 7) { if (keyCode == BACKSPACE) gameState = 0; else if (keyCode == ENTER) { if (loreCurrentIndex >= loreFullText.length()) gameState = 0; else loreCurrentIndex = loreFullText.length(); } }
-  else if (gameState == 0 && keyCode == ENTER) { gameState = 1; } 
-  else if (gameState == 1) {
-    boolean isDashing = (dashUnlocked && keyCode == SHIFT); p1.move(keyCode, key, cols, rows, isDashing); 
+// ==========================================
+// ACT 2 & 3: VFS TERMINAL & NANO EDITOR
+// ==========================================
+void drawTerminal() { 
+  fill(10, 10, 15, 240); rect(10, 10, width-20, height-20, 5); 
+  
+  if (isNanoMode) {
+    fill(200); rect(10, 10, width-20, 25);
+    fill(0); textSize(14); textAlign(CENTER, TOP); 
+    text("GNU nano 6.2 -- File: " + currentFile, width/2, 15);
     
-    // GANTI SENJATA PAKAI ANGKA
-    if (key == '1') { currentWeapon = 1; currentHint = ">> PAYLOAD 1: PING RIFLE LOADED."; }
-    if (key == '2' && spreadUnlocked) { currentWeapon = 2; currentHint = ">> PAYLOAD 2: BROADCAST SPREAD LOADED."; }
-    if (key == '3' && plasmaUnlocked) { currentWeapon = 3; currentHint = ">> PAYLOAD 3: HEAVY PLASMA LOADED. (HOLD SPACE)"; }
+    fill(#39FF14); textAlign(LEFT, TOP);
+    text(nanoBuffer + (millis() % 1000 < 500 ? "_" : ""), 25, 45);
     
-    // NEMBAK
-    if (key == ' ') {
-      if (currentWeapon == 3 && plasmaUnlocked) { isCharging = true; } // Tahan Charge
-      else {
-        bullets.add(new Bullet(p1.col, p1.row, cellSize, "RIFLE"));
-        if (currentWeapon == 2) { if (p1.row > 0) bullets.add(new Bullet(p1.col, p1.row - 1, cellSize, "RIFLE")); if (p1.row < rows - 1) bullets.add(new Bullet(p1.col, p1.row + 1, cellSize, "RIFLE")); }
-      }
+    fill(200); rect(10, height - 35, width-20, 25);
+    fill(0); textAlign(CENTER, BOTTOM); 
+    text("^S Save & Exit (Press ESC)", width/2, height - 15);
+  } 
+  else {
+    fill(#39FF14); textSize(14); textAlign(LEFT, TOP); 
+    text("SIGINT VIRTUAL FILE SYSTEM (VFS) - CHROOT JAIL", 20, 20); 
+    text("==============================================", 20, 40);
+    
+    float startY = 70;
+    for (String line : terminalHistory) {
+      fill(#39FF14); if (line.startsWith("root@")) fill(0, 255, 255); else if (line.startsWith("ERROR") || line.contains("Denied")) fill(255, 50, 50);
+      text(line, 20, startY);
+      startY += 20 * (line.split("\n").length); 
     }
-    if (key == 'f' || key == 'F') { if (millis() - p1.lastParryAttempt > 1000) { p1.parryTimer = millis(); p1.lastParryAttempt = millis(); } else shake = 5; }
-    if (key == 'q' || key == 'Q') gameState = 2; 
-  }
-  else if (gameState == 2) { 
-    if (keyCode == BACKSPACE && inputText.length() > 0) inputText = inputText.substring(0, inputText.length() - 1);
-    else if (keyCode == ENTER) { 
-      String cmd = inputText.trim().toLowerCase(); 
-      if (cmd.equals("clear;")) { currentHint = ""; } else if (cmd.equals("whoami;")) { currentHint = "root"; } else if (cmd.equals("ls;")) { currentHint = "bin/  boot/  etc/  malware.bin  save.json"; } else if (cmd.equals("pwd;")) { currentHint = "/var/log/firewall"; }
-      else if (cmd.equals("netstat;") || cmd.equals("nmap;")) { currentHint = "PORT 666 OPEN (rootkit.exe)"; }
-      
-      else if (cmd.equals("help;")) { 
-        String h = "AVAILABLE COMMANDS (Use ';' at the end):\n- SYS: clear;, ls;, pwd;, whoami;\n- NET: nmap;, netstat;\n- UFW: ufw status;, ufw disable;\n- SWAP: Press 1, 2, 3 in combat"; 
-        if (clueDash || clueSpread || clueAim || cluePlasma) h += "\n\n>> UNCOVERED MODULES (Extract via 'ufw allow [PORT];'):";
-        if (clueDash) h += "\n- Evade Module detected on PORT 22";
-        if (clueSpread) h += "\n- Array Multi-fire detected on PORT 443";
-        if (clueAim) h += "\n- Lock-on Homing detected on PORT 80";
-        if (cluePlasma) h += "\n- Heavy Plasma Charge detected on PORT 21";
-        currentHint = h;
-      }
-      else if (cmd.equals("ufw status;")) {
-        String stat = "Status: active\nTo           Action      From\n";
-        if (dashUnlocked) stat += "22/tcp       ALLOW       Anywhere (Evade)\n";
-        if (autoAimUnlocked) stat += "80/tcp       ALLOW       Anywhere (Aim)\n";
-        if (spreadUnlocked) stat += "443/tcp      ALLOW       Anywhere (Spread)\n";
-        if (plasmaUnlocked) stat += "21/tcp       ALLOW       Anywhere (Plasma)\n";
-        currentHint = stat;
-      }
-      else if (cmd.equals("ufw allow dash;") || cmd.equals("ufw allow 22;")) { dashUnlocked = true; currentHint = ">> PORT 22 OPENED: [SHIFT] to dash enabled."; } 
-      else if (cmd.equals("ufw allow autoaim;") || cmd.equals("ufw allow 80;")) { autoAimUnlocked = true; currentHint = ">> PORT 80 OPENED: Homing laser enabled."; }
-      else if (cmd.equals("ufw allow spread;") || cmd.equals("ufw allow 443;")) { spreadUnlocked = true; currentHint = ">> PORT 443 OPENED: Multi-fire enabled. Press [2] to equip."; }
-      else if (cmd.equals("ufw allow plasma;") || cmd.equals("ufw allow 21;")) { plasmaUnlocked = true; currentHint = ">> PORT 21 OPENED: Heavy Plasma enabled. Press [3] to equip."; }
-      
-      else if (cmd.equals("sudo invincible;")) { isGodMode = true; currentHint = ">> ROOT ACCESS GRANTED. GOD MODE ENABLED."; }
-      else if (cmd.equals("hp++;")) { p1.hp += 2; currentHint = ">> INTEGRITY RESTORED (+2 HP)."; }
-      else { currentHint = "bash: " + cmd + ": command not found\nType 'help;' for available commands."; }
-      inputText = ""; 
-    } 
-    else if (keyCode == TAB) gameState = 1; else if (key != CODED && keyCode != TAB && keyCode != ENTER) inputText += key;
-  }
-  else if (gameState == 3 && keyCode == ENTER) { saveFile.setBoolean("system_corrupted", true); saveJSONObject(saveFile, "data/save.json"); gameState = 5; }
-  else if (gameState == 4 && keyCode == ENTER) { 
-    level++; 
-    if (level == 2) { clueSpread = true; currentHint = ">> MALWARE MUTATED (LVL 2).\n>> NEW DATA EXTRACTED. Type 'help;' in terminal."; }
-    else if (level == 3) { clueAim = true; cluePlasma = true; currentHint = ">> MALWARE OVERCLOCKED (LVL 3).\n>> NEW DATA EXTRACTED. Type 'help;' in terminal."; }
-    else currentHint = ">> MALWARE CRITICAL.\nExpect instant teleports!";
-    resetGame(); gameState = 1; 
+    
+    fill(255); 
+    text("root@sigint:" + currentDir + "# " + inputText + (millis() % 1000 < 500 ? "_" : ""), 20, height - 50); 
+    fill(150); textAlign(CENTER, BOTTOM); text("Press [TAB] to return to Grid (Timer is paused)", width/2, height - 10); 
   }
 }
 
-// FUNGSI BARU BUAT NGELEPAS PLASMA CHARGE
-void keyReleased() {
-  if (gameState == 1 && key == ' ' && currentWeapon == 3 && plasmaUnlocked) {
-    if (isCharging) {
-      if (chargeTime >= 60) { bullets.add(new Bullet(p1.col, p1.row, cellSize, "PLASMA")); shake = 10; }
-      isCharging = false; chargeTime = 0;
+// ==========================================
+// INPUT CONTROLLER (MERGED keyPressed)
+// ==========================================
+void keyPressed() {
+  if (gameState == 1) {
+    if (key == 'q' || key == 'Q') gameState = 2; 
+    p1.move(keyCode, key, cols, rows, dashUnlocked); 
+    if (key == ' ' && isBossActive) bullets.add(new Bullet(p1.col, p1.row, cellSize, "RIFLE", b1));
+  } 
+  else if (gameState == 2) { 
+    if (isNanoMode) {
+      if (keyCode == ESC) { 
+        key = 0; 
+        isNanoMode = false; 
+        
+        if (currentFile.equals("weapon_config.py")) {
+          parseWeaponConfig(nanoBuffer); 
+          terminalHistory.add(">> File " + currentFile + " saved and applied to Kernel.");
+        } else if (currentFile.equals("decryptor.py")) {
+          decryptorBuffer = nanoBuffer; 
+          terminalHistory.add(">> File " + currentFile + " saved.");
+          saveGameState();
+        }
+      }
+      else if (keyCode == BACKSPACE && nanoBuffer.length() > 0) nanoBuffer = nanoBuffer.substring(0, nanoBuffer.length() - 1);
+      else if (keyCode == ENTER) nanoBuffer += "\n";
+      else if (key != CODED && keyCode != ESC) nanoBuffer += key;
+    } 
+    else {
+      if (keyCode == TAB) gameState = 1; 
+      else if (keyCode == BACKSPACE && inputText.length() > 0) inputText = inputText.substring(0, inputText.length() - 1);
+      else if (keyCode == ENTER) { processCommand(inputText); inputText = ""; }
+      else if (key != CODED && keyCode != TAB && keyCode != ENTER && keyCode != ESC) inputText += key;
     }
   }
+}
+
+// ==========================================
+// ACT 2, 3, & 4: LOGIKA TERMINAL & HACKING
+// ==========================================
+void processCommand(String input) {
+  String cmd = input.trim().toLowerCase();
+  terminalHistory.add("root@sigint:" + currentDir + "# " + input); 
+  
+  if (cmd.equals("clear")) { terminalHistory.clear(); }
+  else if (cmd.equals("pwd")) { terminalHistory.add("/var/sigint_jail/root" + currentDir.substring(1)); }
+  else if (cmd.equals("ls")) {
+    if (currentDir.equals("~")) terminalHistory.add("logs/    src/    tools/    Skripsi_Final.docx");
+    else if (currentDir.equals("~/logs")) {
+      if (log2Unlocked) terminalHistory.add("intercept_01.log    intercept_02.log");
+      else terminalHistory.add("intercept_01.log    intercept_02_encrypted.log");
+    }
+    else if (currentDir.equals("~/src")) terminalHistory.add("core_logic.py    weapon_config.py");
+    else if (currentDir.equals("~/tools")) terminalHistory.add("decryptor.py");
+  }
+  else if (cmd.startsWith("cd ")) {
+    String target = cmd.substring(3).trim();
+    if (target.equals("..") || target.equals("/")) {
+      if (currentDir.equals("~")) terminalHistory.add("bash: cd: " + target + ": Permission Denied (Sandbox Restricted)");
+      else currentDir = "~";
+    }
+    else if (currentDir.equals("~") && (target.equals("logs") || target.equals("src") || target.equals("tools"))) {
+      currentDir = "~/" + target;
+    }
+    else { terminalHistory.add("bash: cd: " + target + ": No such file or directory"); }
+  }
+  else if (cmd.startsWith("cat ")) {
+    String file = cmd.substring(4).trim();
+    if (file.equals("skripsi_final.docx")) terminalHistory.add("ERROR: File corrupted. Data shredded by user.");
+    else if (file.equals("intercept_01.log") && currentDir.equals("~/logs")) {
+       terminalHistory.add("[SOURCE IP: 192.168.x.x]\nSistem, ini pesan terakhir gw. Jangan biarkan\nkoneksi masuk sampai The_Truth.zip ter-upload.");
+    }
+    else if (file.equals("intercept_02.log") && currentDir.equals("~/logs")) {
+       if (log2Unlocked) terminalHistory.add("[C2 TELEMETRY - DECRYPTED]\nHunter-Killer AI: Target menggunakan UI Shooter.\nRekomendasi adaptasi: Tingkatkan armor pada wave 2.");
+       else terminalHistory.add("cat: intercept_02.log: No such file or directory (Did you mean intercept_02_encrypted.log?)");
+    }
+    else if (file.equals("intercept_02_encrypted.log")) {
+       terminalHistory.add("ERROR: File is locked by AES-256. Use decryptor.py to unlock.");
+    }
+    else terminalHistory.add("cat: " + file + ": No such file or directory");
+  }
+  else if (cmd.startsWith("nano ")) {
+    String file = cmd.substring(5).trim();
+    if (file.equals("weapon_config.py") && currentDir.equals("~/src")) {
+      isNanoMode = true; currentFile = file;
+      nanoBuffer = "# SIGINT WEAPON CONFIG\n# Edit variables below:\n\nrifle_speed = " + rifleSpeed + "\ndamage = " + playerDamage;
+    } else if (file.equals("decryptor.py") && currentDir.equals("~/tools")) {
+      isNanoMode = true; currentFile = file;
+      nanoBuffer = decryptorBuffer; 
+    } else {
+      terminalHistory.add("nano: " + file + ": Permission denied or file not found");
+    }
+  }
+  else if (cmd.startsWith("run ")) {
+    String target = cmd.substring(4).trim();
+    if (target.equals("decryptor.py") && currentDir.equals("~/tools")) {
+      terminalHistory.add("Usage: run decryptor.py [target_file]");
+    }
+    else if (target.startsWith("decryptor.py ")) {
+      String fileTarget = target.substring(13).trim();
+      if (!currentDir.equals("~/tools")) {
+        terminalHistory.add("bash: run: execute this command from ~/tools directory");
+      } else {
+        int parsedKey = parseDecryptorKey(decryptorBuffer);
+        if (fileTarget.equals("intercept_02_encrypted.log") || fileTarget.equals("~/logs/intercept_02_encrypted.log")) {
+          if (parsedKey == boss1Key) {
+            log2Unlocked = true;
+            saveGameState();
+            terminalHistory.add(">> DECRYPTION SUCCESSFUL! File unlocked as 'intercept_02.log'.");
+          } else {
+            terminalHistory.add(">> DECRYPTION FAILED. Invalid key offset: " + parsedKey);
+          }
+        } else {
+          terminalHistory.add(">> Target file not found or not encrypted.");
+        }
+      }
+    } else {
+      terminalHistory.add("bash: run: command not found");
+    }
+  }
+  else if (cmd.length() > 0) { terminalHistory.add("bash: " + cmd + ": command not found"); }
+  
+  while(terminalHistory.size() > 14) { terminalHistory.remove(0); }
+}
+
+void drawGameOver() { fill(255, 0, 0); textSize(40); textAlign(CENTER, CENTER); text("KERNEL PANIC\nIntegrity Compromised.", width/2, height/2); }
+void drawCRT() { stroke(0, 50); strokeWeight(2); for(int i = 0; i < height; i += 4) line(0, i, width, i); }
+void drawGlitch() { if (shake > 0) { noStroke(); for (int i = 0; i < 5; i++) { float y = random(height), h = random(5, 30), x = random(-40, 40); fill(255, 0, 50, 150); rect(x, y, width, h); } } }
+
+// ==========================================
+// ACT 3 & 4: TEXT PARSERS (THE HACKING ENGINE)
+// ==========================================
+void parseWeaponConfig(String code) {
+  String[] lines = code.split("\n");
+  for (String l : lines) {
+    String cleanLine = l.trim().toLowerCase().replaceAll(" ", "");
+    if (cleanLine.startsWith("rifle_speed=")) {
+      try { rifleSpeed = Integer.parseInt(cleanLine.substring(12)); } catch(Exception e) {}
+    }
+    else if (cleanLine.startsWith("damage=")) {
+      try { 
+        int newDmg = Integer.parseInt(cleanLine.substring(7)); 
+        if (newDmg <= 10) playerDamage = newDmg; 
+      } catch(Exception e) {}
+    }
+  }
+}
+
+int parseDecryptorKey(String code) {
+  String[] lines = code.split("\n");
+  for (String l : lines) {
+    String cleanLine = l.trim().toLowerCase().replaceAll(" ", "");
+    if (cleanLine.startsWith("decryption_key=")) {
+      try { return Integer.parseInt(cleanLine.substring(15)); } catch(Exception e) {}
+    }
+  }
+  return 0;
+}
+
+// ==========================================
+// ACT 5: PERSISTENT AUTO-SAVE JSON
+// ==========================================
+void loadGameState() {
+  File f = new File(dataPath("system_state.json"));
+  if (f.exists()) {
+    JSONObject state = loadJSONObject("system_state.json");
+    level = state.getInt("current_level", 1);
+    log2Unlocked = state.getBoolean("log2Unlocked", false);
+    rifleSpeed = state.getInt("rifleSpeed", 10);
+    playerDamage = state.getInt("playerDamage", 2);
+    terminalHistory.add(">> PERSISTENT STATE LOADED. RESUMING KERNEL...");
+  } else {
+    saveGameState(); // Bikin file baru kalau baru pertama kali main
+  }
+}
+
+void saveGameState() {
+  JSONObject state = new JSONObject();
+  state.setInt("current_level", level);
+  state.setBoolean("log2Unlocked", log2Unlocked);
+  state.setInt("rifleSpeed", rifleSpeed);
+  state.setInt("playerDamage", playerDamage);
+  saveJSONObject(state, "data/system_state.json");
 }

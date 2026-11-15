@@ -1,39 +1,50 @@
 class Bullet {
-  float x, y, speed;
-  int row;
-  boolean active = true;
+  float x, y, speedX, speedY;
+  int row; 
+  boolean active = true; 
   String type; 
   
-  Bullet(int col, int row, int cellSize, String type) {
-    x = col * cellSize + cellSize/2;
-    y = row * cellSize + cellSize/2;
-    this.row = row;
+  Bullet(int col, int row, int cellSize, String type, Boss b) {
+    x = col * cellSize + cellSize / 2.0; 
+    y = row * cellSize + cellSize / 2.0;
+    this.row = row; 
     this.type = type;
-    speed = type.equals("PLASMA") ? 15 : 10;
+    
+    // Nentuin arah tembakan (Kiri atau Kanan ngikutin posisi Bos)
+    float baseSpeed = type.equals("PLASMA") ? 15 : 10;
+    speedX = (b.col * cellSize > this.x) ? baseSpeed : -baseSpeed;
   }
   
   void update(Boss b, boolean autoAim) {
-    // Plasma ga butuh auto-aim karena gede banget
     if (autoAim && !type.equals("PLASMA")) { 
       float targetY = b.row * 150 + 75; // Asumsi cellSize 150
-      y = lerp(y, targetY, 0.05);
+      float targetX = b.col * 150 + 75;
+      y = lerp(y, targetY, 0.1); 
+      x = lerp(x, targetX, 0.1);
+    } else {
+      x += speedX; // Nembak lurus ke kiri/kanan
     }
-    x += speed;
-    if (x > width) active = false;
+    // Hapus peluru kalau nabrak ujung layar
+    if (x < 0 || x > width) active = false;
   }
   
   void display() {
     if (type.equals("PLASMA")) {
-      fill(0, 255, 255); rect(x, y - 20, 80, 40); // Laser Gede
+      fill(0, 255, 255); rect(x, y - 20, 80, 40);
     } else {
-      fill(#39FF14); rect(x, y - 5, 20, 10); // Peluru biasa
+      fill(#39FF14); rect(x, y - 5, 20, 10);
     }
   }
   
   boolean checkHit(Boss b, int cellSize) {
     if (!active) return false;
     float bLeft = b.col * cellSize;
-    if (this.row == b.row && this.x > bLeft) return true;
+    float bRight = bLeft + cellSize;
+    
+    // Hitbox disempurnain biar akurat nembak dari kiri maupun kanan
+    if (this.row == b.row && this.x > bLeft && this.x < bRight) {
+      return true;
+    }
     return false;
   }
 }

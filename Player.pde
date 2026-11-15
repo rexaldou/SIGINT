@@ -38,11 +38,17 @@ class Player {
   
   void displayUI() { fill(#39FF14); textSize(20); textAlign(LEFT, TOP); text("INTEGRITY: " + hp + " HP", 15, 15); }
   
-  void move(int kCode, char k, int maxCols, int maxRows, boolean useDash) {
-    int step = useDash ? 2 : 1; 
-    if (kCode == UP || k == 'w') { row = max(0, row - step); } 
-    else if (kCode == DOWN || k == 's') { row = min(maxRows - 1, row + step); } 
-    else if (kCode == LEFT || k == 'a') { col = max(0, col - step); } 
-    else if (kCode == RIGHT || k == 'd') { col = min(maxCols - 1, col + step); }
+  void move(int kCode, char k, int maxCols, int maxRows, boolean isDashUnlocked) {
+    int startRow = row; int startCol = col;
+    
+    if (kCode == UP || k == 'w') row = max(0, row - 1); 
+    else if (kCode == DOWN || k == 's') row = min(maxRows - 1, row + 1); 
+    else if (kCode == LEFT || k == 'a') col = max(0, col - 1); 
+    else if (kCode == RIGHT || k == 'd') col = min(maxCols - 1, col + 1);
+    
+    // Kalau berhasil pindah dan skill Dash aktif, kasih I-Frame (Kebal)!
+    if ((row != startRow || col != startCol) && isDashUnlocked) {
+      iFrameTimer = 20; // Kasih kebal sekitar 0.3 detik pas gerak
+    }
   }
 }
