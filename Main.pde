@@ -120,13 +120,13 @@ void drawCombat() {
   
   // KAMERA SINEMATIK SAAT PARRY SUKSES (SLO-MO & ZOOM KE PLAYER)
   if (parryFlashTimer > 0) {
-    frameRate(15); // Efek Slow-Motion
+    frameRate(15);
     translate(width/2 - (p1.currentX + cellSize/2), height/2 - (p1.currentY + cellSize/2));
     translate(p1.currentX + cellSize/2, p1.currentY + cellSize/2);
-    scale(1.25); // Zoom-in 1.25x ke karakter
+    scale(1.25);
     translate(-(p1.currentX + cellSize/2), -(p1.currentY + cellSize/2));
   } else {
-    frameRate(60); // Kembali ke kecepatan normal
+    frameRate(60);
   }
   
   stroke(#39FF14); strokeWeight(2);
@@ -173,9 +173,8 @@ void drawCombat() {
   } else {
     if (frameCount % 20 < 10) fill(255, 0, 0); else fill(150, 0, 0);
     text("[ THREAT LEVEL : CRITICAL ]", width/2, 15);
-    }
     
-    // 1. UPDATE BOS ATAU STATUS STUN (HASIL MITIGASI ZERO-DAY)
+    // 1. UPDATE BOS ATAU STATUS STUN
     if (bossStunTimer > 0) {
       bossStunTimer--;
       fill(0, 255, 255); textSize(14); textAlign(CENTER, TOP);
@@ -185,12 +184,12 @@ void drawCombat() {
     }
     b1.display(cellSize);
     
-    // 2. SKENARIO LVL 4: STUXNET (Sabotase Kecepatan Peluru Secara Diam-diam)
+    // 2. SKENARIO LVL 4: STUXNET
     if (level == 4 && frameCount % 180 == 0) {
       rifleSpeed = int(random(4, 18));
     }
     
-    // 3. SKENARIO LVL 5: WANNACRY (Enkripsi Lantai Permanen - Port 445)
+    // 3. SKENARIO LVL 5: WANNACRY
     if (level == 5 && ransomCol != -1) {
       fill(255, 0, 50, 160);
       rect(ransomCol * cellSize, ransomRow * cellSize, cellSize, cellSize);
@@ -202,7 +201,7 @@ void drawCombat() {
       }
     }
     
-    // 4. TEMBAKAN BOS & SKENARIO LVL 6: MIRAI BOTNET (DDoS Flood)
+    // 4. TEMBAKAN BOS & SKENARIO LVL 6: MIRAI
     if (b1.wantsToShoot && bossStunTimer == 0) { 
       enemyBullets.add(new EnemyBullet(b1.col, b1.row, cellSize)); 
       if (level == 6 && !ddosLimited) {
@@ -213,10 +212,10 @@ void drawCombat() {
       b1.wantsToShoot = false; 
     }
     
-    // 5. MEKANIK INTERUPSI 1: ZERO-DAY EXPLOIT (Wajib 'ufw deny [port]')
+    // 5. ZERO-DAY EXPLOIT
     if (level >= 3 && !zeroDayActive && bossStunTimer == 0 && frameCount % 720 == 300) {
       zeroDayActive = true;
-      zeroDayTimer = 600; // 10 detik sebelum Game Over mutlak
+      zeroDayTimer = 600; 
       zeroDayPort = int(random(700, 999));
       shake = 15;
       currentHint = ">> FATAL ZERO-DAY CHARGING! Inspect 'netstat' & execute 'ufw deny [port]'!";
@@ -230,7 +229,7 @@ void drawCombat() {
       if (zeroDayTimer <= 0) { p1.hp = 0; gameState = 3; }
     }
     
-    // 6. MEKANIK INTERUPSI 2: ROGUE PROCESS WORM (Wajib 'top' & 'kill -9 [PID]')
+    // 6. ROGUE PROCESS WORM
     if (level >= 2 && !wormActive && frameCount % 600 == 200) {
       wormActive = true;
       wormCol = int(random(0, 2)); wormRow = int(random(rows));
@@ -239,25 +238,6 @@ void drawCombat() {
       currentHint = ">> ROGUE WORM SPAWNED! Find PID via 'top' & execute 'kill -9 [PID]'!";
     }
     if (wormActive) {
-      // 7. SKENARIO LVL 10: NATION-STATE APT (Hardware Failure & Survival Climax)
-      if (level >= 10) {
-        aptSurvivedFrames++;
-        // Kerusakan sektor RAM acak (Lantai menghitam/rusak secara visual)
-        for (int c = 0; c < cols; c++) {
-          for (int r = 0; r < rows; r++) {
-            if (noise(c * 2.5, r * 2.5, frameCount * 0.03) > 0.62) {
-              fill(5, 5, 8, 230); noStroke();
-              rect(c * cellSize, r * cellSize, cellSize, cellSize);
-              fill(255, 0, 50, 180); textSize(10); textAlign(CENTER, CENTER);
-              text("0xDEAD_SECTOR", c * cellSize + cellSize/2, r * cellSize + cellSize/2);
-            }
-          }
-        }
-        if (aptSurvivedFrames >= aptTargetFrames) {
-          uploadProgress = 100.0;
-          gameState = 4; // Tamat (The_Truth.zip 100% Terunggah)
-        }
-      }
       wormShootTimer++;
       fill(180, 0, 255); stroke(255); strokeWeight(2);
       rect(wormCol * cellSize + 25, wormRow * cellSize + 25, cellSize - 50, cellSize - 50, 6);
@@ -269,11 +249,30 @@ void drawCombat() {
       }
     }
     
+    // 7. SKENARIO LVL 10: APT HARDWARE FAILURE
+    if (level >= 10) {
+      aptSurvivedFrames++;
+      for (int c = 0; c < cols; c++) {
+        for (int r = 0; r < rows; r++) {
+          if (noise(c * 2.5, r * 2.5, frameCount * 0.03) > 0.62) {
+            fill(5, 5, 8, 230); noStroke();
+            rect(c * cellSize, r * cellSize, cellSize, cellSize);
+            fill(255, 0, 50, 180); textSize(10); textAlign(CENTER, CENTER);
+            text("0xDEAD_SECTOR", c * cellSize + cellSize/2, r * cellSize + cellSize/2);
+          }
+        }
+      }
+      if (aptSurvivedFrames >= aptTargetFrames) {
+        uploadProgress = 100.0;
+        gameState = 4; 
+      }
+    }
+    
     if (b1.hp <= 0) {
       for (int i = 0; i < 150; i++){
         particles.add(new Particle(b1.col * cellSize + cellSize/2, b1.row * cellSize + cellSize/2, color(255, 120, 0)));
         particles.add(new Particle(b1.col * cellSize + cellSize/2, b1.row * cellSize + cellSize/2, color(255, 255, 255)));
-      };
+      }
       shake = 30; 
       isBossActive = false; 
       waveTimer = 0; 
@@ -308,7 +307,6 @@ void drawCombat() {
   
   for (int i = bullets.size() - 1; i >= 0; i--) {
     Bullet b = bullets.get(i); 
-    // Skenario Lvl 7 (Pegasus): Paksa Auto-Aim buta saat Bos sedang invisible!
     boolean effectiveAim = (level == 7 && frameCount % 120 > 10) ? false : autoAimUnlocked;
     if (isBossActive) b.update(b1, effectiveAim);
     b.display();
@@ -327,12 +325,12 @@ void drawCombat() {
     
     if (eb.checkHitPlayer(p1, cellSize)) {
       if (p1.isParrying) { 
-        eb.isMalware = false; // Sterilkan paket & pantulkan (Homing ke Bos)
+        eb.isMalware = false; 
         shake = 25; 
-        parryFlashTimer = 12; // Picu Zoom + Invert + Slo-mo
-        freezeFrames = 3;     // Hitstop
-        p1.iFrameTimer = 60;  // Kebal 1 detik
-        cpuOverloadTimer = 0; // Reset penalti jika sukses parry
+        parryFlashTimer = 12; 
+        freezeFrames = 3;     
+        p1.iFrameTimer = 60;  
+        cpuOverloadTimer = 0; 
         
         if (!hasParriedOnce) {
           hasParriedOnce = true; 
@@ -349,8 +347,9 @@ void drawCombat() {
             currentHint = ">>LOG4SHELL RCE EXECUTED! MOVEMENT CONTROLS INVERTED (5s)!";
           } else {
             currentHint = ">> BREACH DETECTED! SYSTEM INTEGRITY COMPROMISED.";
-        } 
-        background(255, 0, 0, 120); // Impact Feedback merah saat kena hit
+          }
+        }
+        background(255, 0, 0, 120); 
         enemyBullets.remove(i); 
       }
     } else if (isBossActive && eb.checkHitBoss(b1, cellSize)) { 
@@ -400,7 +399,6 @@ void drawCombat() {
   float currentSpeedGbps = 0;
   
   if (gameState == 2) {
-    // Penalti buka konsol: Bandwidth anjlok ke 0.1 KB/s
     uploadProgress = min(maxPct - 0.01, uploadProgress + 0.00005);
   } else if (level < 10) {
     if (isBossActive && b1 != null) {
@@ -411,12 +409,10 @@ void drawCombat() {
     }
     currentSpeedGbps = random(2.1, 2.8);
   } else {
-    // Level 10: Fluktuasi ekstrem 90% -> 100% selama 2.5 - 3.5 menit
     uploadProgress = 90.0 + (constrain((float)aptSurvivedFrames / aptTargetFrames, 0, 1) * 10.0);
     currentSpeedGbps = (sin(frameCount * 0.05) > -0.3) ? random(0.4, 1.9) : 0.01;
   }
   
-  // Render Bar & Kecepatan di Pojok Kiri Bawah
   fill(20, 30, 40, 200); stroke(#39FF14); strokeWeight(1);
   rect(15, height - 55, 210, 14);
   noStroke(); fill(#39FF14);
