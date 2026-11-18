@@ -13,36 +13,70 @@ class Player {
   }
   
   void display(int cellSize) {
-    float targetX = col * cellSize; float targetY = row * cellSize;
-    trails.add(new GhostTrail(currentX, currentY));
-    currentX = lerp(currentX, targetX, 0.3); currentY = lerp(currentY, targetY, 0.3);
+    float targetX = col * cellSize; 
+    float targetY = row * cellSize;
     
+    // 1. HANYA MUNCULKAN GHOST TRAIL SAAT SEDANG BERGERAK (ANTI SILAU)
+    if (dist(currentX, currentY, targetX, targetY) > 2) {
+      trails.add(new GhostTrail(currentX, currentY));
+    }
+    
+    // Gerakan dibuat lebih mulus (gliding)
+    currentX = lerp(currentX, targetX, 0.22); 
+    currentY = lerp(currentY, targetY, 0.22);
+    
+    // 2. RENDER BAYANGAN DASH YANG LEMBUT (TRANSPARANSI RENDAH)
+    noStroke();
     for (int i = trails.size() - 1; i >= 0; i--) {
-      GhostTrail t = trails.get(i); t.life--; fill(#39FF14, t.life * 15); rect(t.x + 10, t.y + 10, cellSize - 20, cellSize - 20, 8);
+      GhostTrail t = trails.get(i); 
+      t.life--; 
+      fill(80, 220, 160, t.life * 6); // Mint lembut & tipis
+      rect(t.x + 18, t.y + 18, cellSize - 36, cellSize - 36, 8);
       if (t.life <= 0) trails.remove(i);
     }
     
-    if (millis() - parryTimer < 90) { isParrying = true; fill(255); } 
-    else { isParrying = false; fill(#39FF14); }
+    // 3. CEK STATUS PARRY (80ms)
+    if (millis() - parryTimer < 80) isParrying = true; 
+    else isParrying = false;
     
-    // KEDAP KEDIP I-FRAME
-    if (iFrameTimer > 0) {
-      if (frameCount % 4 < 2) fill(255); else fill(#39FF14);
+    // 4. DESAIN KARAKTER SLEEK (TENGAH GELAP, GARIS TEPI SOFT MINT)
+    fill(15, 30, 25, 220); // Isi kotak gelap adem
+    if (isParrying) {
+      stroke(200, 255, 255); strokeWeight(3); // Cyan terang saat parry
+    } else if (iFrameTimer > 0) {
+      // I-Frame TANPA kedap-kedip: Warna biru muda lembut yang berdenyut halus
+      float pulse = map(sin(frameCount * 0.2), -1, 1, 100, 220);
+      stroke(100, 220, 255, pulse); strokeWeight(2);
+    } else {
+      stroke(80, 230, 140, 200); strokeWeight(2); // Hijau mint ramah mata
     }
+    rect(currentX + 14, currentY + 14, cellSize - 28, cellSize - 28, 8);
     
-    rect(currentX + 10, currentY + 10, cellSize - 20, cellSize - 20, 8);
+    // Inti AI kecil di tengah kotak (Core Node)
+    noStroke();
+    fill(isParrying ? color(255) : color(80, 230, 140, 180));
+    rect(currentX + cellSize/2 - 8, currentY + cellSize/2 - 8, 16, 16, 4);
     
-    if (isParrying) { noFill(); stroke(255); strokeWeight(3); ellipse(currentX + cellSize/2, currentY + cellSize/2, cellSize, cellSize); }
-    if (millis() - lastParryAttempt < 1000) { fill(255, 0, 0, 100); ellipse(currentX + cellSize/2, currentY + cellSize/2, cellSize/2, cellSize/2); }
+    // 5. EFEK RING PARRY & COOLDOWN (LEBIH TRANSPARAN)
+    if (isParrying) { 
+      noFill(); stroke(150, 255, 255, 180); strokeWeight(2); 
+      ellipse(currentX + cellSize/2, currentY + cellSize/2, cellSize * 0.85, cellSize * 0.85); 
+    }
+    if (millis() - lastParryAttempt < 450) { 
+      noStroke(); fill(255, 80, 80, 45); 
+      ellipse(currentX + cellSize/2, currentY + cellSize/2, cellSize * 0.35, cellSize * 0.35); 
+    }
   }
   
   void displayUI() { 
-    fill(#39FF14); textSize(20); textAlign(LEFT, TOP); 
+    textSize(18); textAlign(LEFT, TOP); 
+    // Masking HP jadi Hex acak saat Bos 9 Rage Mode (<= 50% HP) atau di Bos 10
     boolean corruptHP = (level == 9 && isBossActive && b1 != null && b1.hp <= b1.maxHp / 2) || (level >= 10);
     if (corruptHP) {
-      fill(255, 0, 80);
+      fill(255, 80, 100);
       text("INTEGRITY: 0x" + hex(int(random(4096, 65535)), 4) + " [CORRUPTED]", 15, 15);
     } else {
+      fill(120, 240, 160); // Hijau mint adem ramah mata
       text("INTEGRITY: " + hp + " HP", 15, 15); 
     }
   }

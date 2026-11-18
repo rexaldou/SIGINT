@@ -129,11 +129,14 @@ void drawCombat() {
     frameRate(60);
   }
   
-  stroke(#39FF14); strokeWeight(2);
+  // Grid dibikin tipis dan transparan (Cyan/Green soft)
+  stroke(57, 255, 20, 60); 
+  strokeWeight(1); 
   for (int i = 0; i < cols; i++) { 
     for (int j = 0; j < rows; j++) { 
       noFill(); rect(i * cellSize, j * cellSize, cellSize, cellSize); 
-      fill(50, 200, 50, 60); textSize(12); textAlign(CENTER, CENTER);
+      // Teks Hex di background dibikin sangat redup
+      fill(50, 200, 50, 30); textSize(11); textAlign(CENTER, CENTER);
       text("0x" + hex(i*10 + j, 2), i*cellSize + cellSize/2, j*cellSize + cellSize/2); 
     } 
   }
@@ -450,10 +453,10 @@ void drawTerminal() {
     
     float startY = 65;
     for (String line : terminalHistory) {
-      fill(#39FF14); 
-      if (line.startsWith("root@")) fill(0, 255, 255); 
-      else if (line.startsWith("ERROR") || line.contains("Denied") || line.startsWith("[QUARANTINE") || line.startsWith("[KERNEL PANIC]")) fill(255, 70, 70);
-      else if (line.contains("[ LOCKED ]")) fill(180, 180, 180);
+      fill(150, 255, 150); 
+      if (line.startsWith("root@")) fill(100, 200, 255); 
+      else if (line.startsWith("ERROR") || line.contains("Denied") || line.startsWith("[QUARANTINE") || line.startsWith("[KERNEL PANIC]")) fill(255, 100, 100);
+      else if (line.contains("[ LOCKED ]")) fill(130, 130, 130);
       text(line, 20, startY);
       startY += 18 * (line.split("\n").length); 
     }
@@ -866,16 +869,27 @@ void processCommand(String input) {
 }
 
 void drawGameOver() { fill(255, 0, 0); textSize(40); textAlign(CENTER, CENTER); text("KERNEL PANIC\nIntegrity Compromised.", width/2, height/2); }
-void drawCRT() { stroke(0, 50); strokeWeight(2); for(int i = 0; i < height; i += 4) line(0, i, width, i); }
+void drawCRT() { 
+  stroke(0, 20); // Opacity diturunkan drastis dari 50 ke 20 (biar ga kotor)
+  strokeWeight(1); // Garis ditipiskan
+  for(int i = 0; i < height; i += 3) line(0, i, width, i); 
+  
+  // Efek vignette (gelap di pinggir) biar fokus ke tengah
+  noFill();
+  for (int i = 0; i < 50; i++) {
+    stroke(0, i); // Makin ke pinggir makin gelap
+    rect(i, i, width - i*2, height - i*2);
+  }
+}
 void drawGlitch() { 
-  float ambientGlitch = (level >= 9 && isBossActive && b1 != null && b1.hp <= b1.maxHp/2) ? 2 : (level >= 10 ? 4 : 0);
+  float ambientGlitch = (level >= 9 && isBossActive && b1 != null && b1.hp <= b1.maxHp/2) ? 1 : (level >= 10 ? 2 : 0);
   if (shake > 0 || ambientGlitch > 0) { 
     noStroke(); 
-    int bars = int(constrain(level, 1, 10) + (shake * 0.2));
+    int bars = int(constrain(level, 1, 5) + (shake * 0.1)); // Kurangi jumlah bar glitch
     for (int i = 0; i < bars; i++) { 
-      float y = random(height), h = random(3, 15 + level * 2), x = random(-10 * level, 10 * level); 
-      fill(255, 0, 50, 140); rect(x, y, width, h); 
-      if (level >= 5) { fill(0, 255, 255, 120); rect(-x, y + random(-5, 5), width, h * 0.6); }
+      float y = random(height), h = random(2, 8 + level), x = random(-5 * level, 5 * level); 
+      fill(255, 0, 50, 80); rect(x, y, width, h); // Opacity glitch diturunkan ke 80
+      if (level >= 5) { fill(0, 200, 255, 60); rect(-x, y + random(-3, 3), width, h * 0.6); }
     } 
   } 
 }
