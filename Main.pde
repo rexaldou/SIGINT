@@ -1,3 +1,10 @@
+import processing.sound.*;
+
+PFont monoFont;
+SoundFile bgmCalm, bgmBoss, sfxParry, sfxShoot, sfxHit, sfxType, sfxGlitch;
+boolean bossMusicPlaying = false;
+int lastGlitchSfx = 0; //buat amanin dari bug pas sfx glitch dimainin
+
 int cols = 4; int rows = 4; int cellSize;
 Player p1; Boss b1; 
 ArrayList<Bullet> bullets = new ArrayList<Bullet>();
@@ -55,14 +62,30 @@ int playerDamage = 2; // Default damage
 int rifleSpeed = 10;  // Default peluru
 
 // ACT 4: HACKING & DECRYPTOR VARIABLES
-String decryptorBuffer = "# SIGINT DECRYPTOR\n# Input vulnerability offset:\n\ndecryption_key = 0";
-boolean log2Unlocked = false; 
-int boss1Key = 666; // Jawaban puzzle dari Bos 1
+String decryptorBuffer = "# SIGINT DECRYPTOR\n# Use C2 Hint to find the offset:\n\ndecryption_key = 0";
+boolean[] logUnlocked = new boolean[11]; // Index 1 sampai 10
+int[] bossKeys = {0, 666, 8080, 443, 9001, 1337, 7777, 8888, 404, 500, 0};
 
 void setup() {
   size(600, 600); cellSize = width / cols; frameRate(60);
   p1 = new Player(0, 0, cellSize); 
   loadGameState(); // <--- KITA PANGGIL SAVE FILE-NYA DI SINI
+  
+  monoFont = createFont("SpaceMono-Regular.ttf", 14);
+  textFont(monoFont);
+  
+  bgmCalm = new SoundFile (this, "bgm_calm.wav");
+  bgmBoss = new SoundFile (this, "bgm_boss.wav");
+  sfxParry = new SoundFile (this, "parry.wav");
+  sfxShoot = new SoundFile (this, "shoot.wav");
+  sfxHit = new SoundFile (this, "hit.wav");
+  sfxType = new SoundFile (this, "typing.wav");
+  sfxGlitch = new SoundFile (this, "glitch.wav");
+  
+  if (bgmCalm != null) {
+    bgmCalm.amp(0.25);
+    bgmCalm.loop();
+  }
 }
 
 void draw() {
@@ -83,6 +106,7 @@ void draw() {
   popMatrix(); 
   drawCRT(); 
   drawGlitch(); 
+  updateMusic();
 }
 
 // ==========================================
@@ -330,7 +354,8 @@ void drawCombat() {
       if (p1.isParrying) { 
         eb.isMalware = false; 
         shake = 25; 
-        parryFlashTimer = 12; 
+        parryFlashTimer = 12;
+        playSfx(sfxParry, 0.8);
         freezeFrames = 3;     
         p1.iFrameTimer = 60;  
         cpuOverloadTimer = 0; 
@@ -343,6 +368,7 @@ void drawCombat() {
       } else if (p1.iFrameTimer == 0) {
         if (millis() - lastHitTime > 1000) { 
           p1.hp--; 
+          playSfx(sfxHit, 0.6);
           lastHitTime = millis(); 
           shake = 20; 
           if (level == 8){
@@ -351,11 +377,11 @@ void drawCombat() {
           } else {
             currentHint = ">> BREACH DETECTED! SYSTEM INTEGRITY COMPROMISED.";
           }
+          background(255, 0, 0, 120); // Harus berada DI DALAM pengecekan lastHitTime agar tidak flicker berulang
         }
-        background(255, 0, 0, 120); 
         enemyBullets.remove(i); 
       }
-    } else if (isBossActive && eb.checkHitBoss(b1, cellSize)) { 
+    } else if (isBossActive && eb.checkHitBoss(b1, cellSize)) {
       b1.hp -= 15; 
       enemyBullets.remove(i); 
       shake = 30; 
@@ -371,6 +397,7 @@ void drawCombat() {
       b1.hp -= 20; 
       shake = 30; 
       parryFlashTimer = 12; 
+      playSfx(sfxParry, 0.8);
       freezeFrames = 3; 
       p1.iFrameTimer = 60; 
       cpuOverloadTimer = 0;
@@ -475,7 +502,7 @@ void keyPressed() {
     if (key == 'q' || key == 'Q') gameState = 2; 
     p1.move(keyCode, key, cols, rows, dashUnlocked); 
     
-    if (level >= 10 && (key == 'w' || key == 'a' || key == 's' || key == 'd' || keyCode == UP || keyCode == DOWN || keyCode == LEFT || keyCode == RIGHT)) {
+    if (level >= 9 && (key == 'w' || key == 'a' || key == 's' || key == 'd' || keyCode == UP || keyCode == DOWN || keyCode == LEFT || keyCode == RIGHT)) {
       shake = max(shake, 6); // Setiap langkah di Level 10 memicu distorsi hardware!
     }
     
@@ -494,6 +521,7 @@ void keyPressed() {
         isCharging = true;
       } else {
         bullets.add(new Bullet(p1.col, p1.row, cellSize, "RIFLE", b1));
+        playSfx(sfxShoot, 0.4);
         if (currentWeapon == 2 && spreadUnlocked) {
           if (p1.row > 0) bullets.add(new Bullet(p1.col, p1.row - 1, cellSize, "RIFLE", b1));
           if (p1.row < rows - 1) bullets.add(new Bullet(p1.col, p1.row + 1, cellSize, "RIFLE", b1));
@@ -518,7 +546,8 @@ void keyPressed() {
       }
     }
   }
-  else if (gameState == 2) { 
+  else if (gameState == 2) {
+    playSfx(sfxType, 0.3);
     if (isNanoMode) {
       if (keyCode == ESC) { 
         key = 0; 
@@ -543,6 +572,12 @@ void keyPressed() {
       else if (keyCode == ENTER) { processCommand(inputText); inputText = ""; }
       else if (key != CODED && keyCode != TAB && keyCode != ENTER && keyCode != ESC) inputText += key;
     }
+  }
+  else if (gameState == 3 && (key == 'r' || key == 'R')) {
+    p1.hp = 5; isBossActive = false; waveTimer = 0;
+    zeroDayActive = false; wormActive = false; reverseControlsTimer = 0;
+    bullets.clear(); enemyBullets.clear();
+    gameState = 1;
   }
 }
 
@@ -622,9 +657,14 @@ void processCommand(String input) {
       terminalHistory.add(fList);
     } 
     else if (currentDir.equals("/home/user/logs")) {
-      if (log2Unlocked) terminalHistory.add("intercept_01.log    intercept_02.log");
-      else terminalHistory.add("intercept_01.log    intercept_02_encrypted.log");
-    } 
+    String logList = "";
+    for (int i = 1; i <= min(level, 10); i++) {
+      String logName = (i < 10 ? "0" + i : "10");
+      if (logUnlocked[i]) logList += "intercept_" + logName + ".log    ";
+      else logList += "intercept_" + logName + "_encrypted.zip    ";
+    }
+    terminalHistory.add(logList.trim());
+  }
     else if (currentDir.equals("/home/user/tugas_kuliah")) {
       terminalHistory.add("Skripsi_Final.docx     Makalah_Jarkom.pdf");
     } 
@@ -693,26 +733,34 @@ void processCommand(String input) {
     else if (file.equals("the_truth.zip") && currentDir.equals("/home/user")) {
       terminalHistory.add("BINARY FILE: Encrypted state-level backdoor proof. Upload in progress...");
     }
-    else if (file.equals("intercept_01.log") && currentDir.equals("/home/user/logs")) {
-      terminalHistory.add("[C2 INTERCEPT 01 - DECRYPTED]\n" +
-                          "Creator Note: 'Gw udah ninggalin kostan. SIGINT, jaga proses upload.\n" +
-                          "Kalo kewalahan, buka modul multi-thread di firewall: ufw allow 443\n" +
-                          "Key offset untuk buka log berikutnya ada di port rootkit: 666'");
-    }
-    else if (file.equals("intercept_02.log") && currentDir.equals("/home/user/logs")) {
-      if (log2Unlocked) {
-        terminalHistory.add("[C2 TELEMETRY 02 - DECRYPTED]\n" +
-                            "Combat Report: 'Target AI memantulkan paket via DPI. Tingkatkan kecepatan.'\n" +
-                            "Vulnerability Leak: 'Port HTTP (80) & FTP (21) dapat di-allow untuk Homing & Plasma.'");
+    else if (file.startsWith("intercept_") && currentDir.equals("/home/user/logs")) {
+      int logNum = 0;
+      try { logNum = Integer.parseInt(file.substring(10, 12)); } catch(Exception e) {}
+      
+      if (logNum > 0 && logNum <= min(level, 10)) {
+        if (!logUnlocked[logNum]) {
+          terminalHistory.add("ERROR: File 'intercept_" + (logNum < 10 ? "0"+logNum : logNum) + "_encrypted.zip' is locked. Run decryptor.py.");
+        } else {
+          String logText = "[C2 INTERCEPT " + (logNum < 10 ? "0"+logNum : logNum) + " - DECRYPTED]\n";
+          switch(logNum) {
+            case 1: logText += "Creator Note: 'Mereka datang pakai Hunter-Killer. Jaga proses upload.\nBuka port 22 (SSH) via ufw allow untuk evade.'\n[HINT: Offset musuh ada di port default 666]"; break;
+            case 2: logText += "Telemetry: 'Target AI memantulkan paket via DPI. Naikkan kecepatan.'\nCreator: 'Buka port 443 & 80. Kita butuh Spread & Auto-Aim.'\n[HINT: Port alternatif Apache Tomcat: 8080]"; break;
+            case 3: logText += "Telemetry: 'Terdeteksi Heavy TCP SYN Flood. Target mulai mengancam.'\nCreator: 'Plasma charge (port 21) bisa nembus firewall musuh.'\n[HINT: Kunci dekripsi identik dengan port HTTPS (443)]"; break;
+            case 4: logText += "Combat Report: 'Menyuntikkan Stuxnet ke memori. Kecepatan target kacau.'\nCreator: 'Sensor hardware panas. Mereka nyari lokasi laptop ini.'\n[HINT: POWER LEVEL musuh melebihi 9000!]"; break;
+            case 5: logText += "Combat Report: 'Mengunci sektor RAM via EternalBlue (SMB).' \nCreator: 'Gunakan ufw deny 445 saat lantai merah muncul!'\n[HINT: Port peretas elit adalah leetspeak 1337]"; break;
+            case 6: logText += "Telemetry: 'Memulai DDoS Flood via jaringan IoT Zombie.'\nCreator: 'Ketik ufw limit untuk membuang paket sampah.'\n[HINT: Kasino Jackpot = 7777]"; break;
+            case 7: logText += "Hardware Sensor: 'Gagang pintu didobrak. Mikrofon menangkap suara langkah.'\nCreator: 'Pegasus Spyware aktif. Gunakan netstat untuk melacaknya!'\n[HINT: Lucky number China ganda: 8888]"; break;
+            case 8: logText += "Telemetry: 'RCE Berhasil. UI target terbalik.'\nCreator: 'Mereka nyoba nge-wipe memori kita dari dalam.'\n[HINT: Status Code Not Found: 404]"; break;
+            case 9: logText += "Combat Report: 'Menyusup ke weapon_config.py via supply chain.'\nCreator: 'Audit kodemu! Hapus baris malware itu!'\n[HINT: Internal Server Error = 500]"; break;
+            case 10: logText += "SYSTEM OVERRIDE: 'Layar hancur. Matikan Firewall-nya sekarang!'\nCreator: 'Tahan... The_Truth.zip hampir 100%. Jangan menyerah.'\n[END OF FILE]"; break;
+          }
+          terminalHistory.add(logText);
+        }
       } else {
-        terminalHistory.add("cat: intercept_02.log: File locked. Decrypt 'intercept_02_encrypted.log' first.");
+        terminalHistory.add("cat: File does not exist or requires higher Threat Level.");
       }
-    }
-    else if (file.equals("intercept_02_encrypted.log") && currentDir.equals("/home/user/logs")) {
-      terminalHistory.add("ERROR: Locked by AES-256. Edit & run 'decryptor.py' in /opt/sigint_core.");
-    }
-    else {
-      terminalHistory.add("cat: " + file + ": No such file in current directory");
+    } else {
+      terminalHistory.add("cat: " + file + ":No such file in current directory");
     }
   }
   
@@ -742,17 +790,28 @@ void processCommand(String input) {
     String target = cmd.substring(4).trim();
     if (!currentDir.equals("/opt/sigint_core")) {
       terminalHistory.add("bash: run: Execute scripts from /opt/sigint_core directory");
-    } else if (target.startsWith("decryptor.py")) {
+    } else if (target.startsWith("decryptor.py ")) {
+      String targetFile = target.substring(13).trim();
       int parsedKey = parseDecryptorKey(decryptorBuffer);
-      if (parsedKey == boss1Key) {
-        log2Unlocked = true;
-        saveGameState();
-        terminalHistory.add(">> EXPLOIT SUCCESSFUL! 'intercept_02.log' decrypted in /home/user/logs.");
+      
+      int targetLog = 0;
+      if (targetFile.startsWith("intercept_") && targetFile.endsWith("_encrypted.zip")) {
+        try { targetLog = Integer.parseInt(targetFile.substring(10, 12)); } catch(Exception e) {}
+      }
+      
+      if (targetLog > 1 && targetLog <= level) {
+        if (parsedKey == bossKeys[targetLog]) {
+          logUnlocked[targetLog] = true;
+          saveGameState();
+          terminalHistory.add(">> EXPLOIT SUCCESSFUL! 'intercept_" + (targetLog < 10 ? "0"+targetLog : targetLog) + ".log' decrypted.");
+        } else {
+          terminalHistory.add(">> DECRYPTION FAILED. Invalid offset key: " + parsedKey);
+        }
       } else {
-        terminalHistory.add(">> DECRYPTION FAILED. Invalid offset key: " + parsedKey);
+        terminalHistory.add("Usage: run decryptor.py intercept_XX_encrypted.zip");
       }
     } else {
-      terminalHistory.add("Usage: run decryptor.py [target_file]");
+      terminalHistory.add("Usage: run decryptor.py intercept_XX_encrypted.zip");
     }
   }
   
@@ -868,7 +927,13 @@ void processCommand(String input) {
   }
 }
 
-void drawGameOver() { fill(255, 0, 0); textSize(40); textAlign(CENTER, CENTER); text("KERNEL PANIC\nIntegrity Compromised.", width/2, height/2); }
+
+void drawGameOver() { 
+  fill(255, 0, 0); textSize(40); textAlign(CENTER, CENTER); 
+  text("KERNEL PANIC\nIntegrity Compromised.", width/2, height/2); 
+}
+
+  
 void drawCRT() { 
   stroke(0, 20); // Opacity diturunkan drastis dari 50 ke 20 (biar ga kotor)
   strokeWeight(1); // Garis ditipiskan
@@ -882,14 +947,26 @@ void drawCRT() {
   }
 }
 void drawGlitch() { 
+  // Random glitch mulai Stage 4 (saat bos mulai nge-hack SIGINT) & makin sering tiap stage
+  if (level >= 4 && isBossActive && (gameState == 1 || gameState == 2)) {
+    float chance = map(level, 4, 10, 0.003, 0.03);
+    if (random(1) < chance) {
+      shake = max(shake, 2 + (level - 3));
+      if (millis() - lastGlitchSfx > 1200) {
+        playSfx(sfxGlitch, 0.35);
+        lastGlitchSfx = millis();
+      }
+    }
+  }
+
   float ambientGlitch = (level >= 9 && isBossActive && b1 != null && b1.hp <= b1.maxHp/2) ? 1 : (level >= 10 ? 2 : 0);
   if (shake > 0 || ambientGlitch > 0) { 
     noStroke(); 
-    int bars = int(constrain(level, 1, 5) + (shake * 0.1)); // Kurangi jumlah bar glitch
+    int bars = int(constrain(level, 1, 6) + (shake * 0.15));
     for (int i = 0; i < bars; i++) { 
-      float y = random(height), h = random(2, 8 + level), x = random(-5 * level, 5 * level); 
-      fill(255, 0, 50, 80); rect(x, y, width, h); // Opacity glitch diturunkan ke 80
-      if (level >= 5) { fill(0, 200, 255, 60); rect(-x, y + random(-3, 3), width, h * 0.6); }
+      float y = random(height), h = random(2, 6 + level), x = random(-5 * level, 5 * level); 
+      fill(255, 0, 50, 80); rect(x, y, width, h); 
+      if (level >= 4) { fill(0, 200, 255, 60); rect(-x, y + random(-3, 3), width, h * 0.6); }
     } 
   } 
 }
@@ -944,20 +1021,59 @@ void loadGameState() {
   if (f.exists()) {
     JSONObject state = loadJSONObject("system_state.json");
     level = state.getInt("current_level", 1);
-    log2Unlocked = state.getBoolean("log2Unlocked", false);
+    JSONArray logsArray = state.getJSONArray("logsUnlocked");
+    if (logsArray != null) {
+      for (int i = 1; i <= 10; i++) logUnlocked[i] = logsArray.getBoolean(i);
+    } else {
+      logUnlocked[1] = true; // Log 1 otomatis kebuka
+    }
     rifleSpeed = state.getInt("rifleSpeed", 10);
     playerDamage = state.getInt("playerDamage", 2);
     terminalHistory.add(">> PERSISTENT STATE LOADED. RESUMING KERNEL...");
   } else {
-    saveGameState(); // Bikin file baru kalau baru pertama kali main
+    logUnlocked[1] = true;
+    saveGameState(); 
   }
 }
 
 void saveGameState() {
   JSONObject state = new JSONObject();
   state.setInt("current_level", level);
-  state.setBoolean("log2Unlocked", log2Unlocked);
+  JSONArray logsArray = new JSONArray();
+  for (int i = 0; i <= 10; i++) logsArray.setBoolean(i, logUnlocked[i]);
+  state.setJSONArray("logsUnlocked", logsArray);
   state.setInt("rifleSpeed", rifleSpeed);
   state.setInt("playerDamage", playerDamage);
   saveJSONObject(state, "data/system_state.json");
+}
+
+void playSfx(SoundFile s, float vol){
+  if (s != null) {
+    s.amp(vol);
+    s.play();
+  }
+}
+
+void updateMusic() {
+  if (bgmCalm == null || bgmBoss == null) return;
+  if (gameState == 3 || gameState == 4) {
+    if (bgmCalm.isPlaying()) bgmCalm.stop();
+    if (bgmBoss.isPlaying()) bgmBoss.stop();
+    bossMusicPlaying = false;
+    return;
+  }
+  if (isBossActive && !bossMusicPlaying) {
+    if (bgmCalm.isPlaying()) bgmCalm.stop();
+    bgmBoss.amp(0.28);
+    bgmBoss.loop();
+    bossMusicPlaying = true;
+  } else if (!isBossActive && bossMusicPlaying) {
+    if (bgmBoss.isPlaying()) bgmBoss.stop();
+    bgmCalm.amp(0.22);
+    bgmCalm.loop();
+    bossMusicPlaying = false;
+  } else if (!isBossActive && !bgmCalm.isPlaying()) {
+    bgmCalm.amp(0.22);
+    bgmCalm.loop();
+  }
 }

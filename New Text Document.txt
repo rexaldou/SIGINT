@@ -1,0 +1,73 @@
+import wave, struct, math, random, os
+
+os.makedirs("data", exist_ok=True)
+SR = 44100
+
+def save_wav(filename, samples):
+    with wave.open(os.path.join("data", filename), "w") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(SR)
+        raw = bytearray()
+        for s in samples:
+            s = max(-1.0, min(1.0, s))
+            raw += struct.pack("<h", int(s * 32767))
+        w.writeframes(raw)
+
+# 1. typing.wav - Klik keyboard mekanikal pendek (0.04 detik)
+typing = []
+for i in range(int(SR * 0.04)):
+    t = i / SR
+    env = math.exp(-t * 140)
+    click = (random.uniform(-1, 1) * 0.4 + math.sin(2 * math.pi * 240 * t) * 0.6) * env
+    typing.append(click * 0.7)
+save_wav("typing.wav", typing)
+
+# 2. shoot.wav - Blip laser/ping lembut (0.12 detik)
+shoot = []
+phase = 0.0
+for i in range(int(SR * 0.12)):
+    t = i / SR
+    freq = 900 - (580 * (t / 0.12))
+    phase += 2 * math.pi * freq / SR
+    env = math.exp(-t * 28)
+    shoot.append(math.sin(phase) * env * 0.55)
+save_wav("shoot.wav", shoot)
+
+# 3. parry.wav - Denting metalik tajam + sub-bass drop (0.45 detik)
+parry = []
+bass_phase = 0.0
+for i in range(int(SR * 0.45)):
+    t = i / SR
+    bass_freq = 130 - (85 * (t / 0.45))
+    bass_phase += 2 * math.pi * bass_freq / SR
+    ring = (math.sin(2 * math.pi * 1380 * t) + 0.6 * math.sin(2 * math.pi * 2070 * t)) * math.exp(-t * 14)
+    bass = math.sin(bass_phase) * math.exp(-t * 6)
+    parry.append((ring * 0.45 + bass * 0.65) * 0.85)
+save_wav("parry.wav", parry)
+
+# 4. hit.wav - Kresek glitch elektronik (0.22 detik)
+hit = []
+for i in range(int(SR * 0.22)):
+    t = i / SR
+    env = math.exp(-t * 12)
+    noise = random.uniform(-1, 1) if (i % 6 < 3) else 0.0
+    buzz = 1.0 if math.sin(2 * math.pi * 75 * t) > 0 else -1.0
+    hit.append((noise * 0.5 + buzz * 0.35) * env * 0.65)
+save_wav("hit.wav", hit)
+
+# 5. bgm.wav - Dark Cyberpunk Ambient Drone (16 detik, mulus buat di-loop)
+bgm = []
+dur = 16.0
+for i in range(int(SR * dur)):
+    t = i / SR
+    lfo1 = 0.65 + 0.35 * math.sin(2 * math.pi * 0.25 * t)
+    lfo2 = 0.5 + 0.5 * math.sin(2 * math.pi * 0.125 * t)
+    d1 = math.sin(2 * math.pi * 73.5 * t) * 0.45
+    a1 = math.sin(2 * math.pi * 110.25 * t) * 0.25 * lfo1
+    d2 = math.sin(2 * math.pi * 147.0 * t) * 0.18 * lfo2
+    shimmer = math.sin(2 * math.pi * 294.0 * t) * 0.05 * lfo1 * lfo2
+    bgm.append((d1 + a1 + d2 + shimmer) * 0.6)
+save_wav("bgm.wav", bgm)
+
+print("Selesai! 5 file .wav udah siap di folder data/")
