@@ -2,5 +2,17 @@
   "playerDamage": 2,
   "rifleSpeed": 10,
   "current_level": 3,
-  "log2Unlocked": false
+  "logsUnlocked": [
+    false,
+    true,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false
+  ]
 }
